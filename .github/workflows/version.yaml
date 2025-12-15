@@ -1,0 +1,93 @@
+---
+name: Versioning
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  calculateVersion:
+    name: Calculate Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      current: ${{ steps.version.outputs.current }}
+      skip: ${{ steps.version.outputs.skip }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install svu
+        uses: freerangebytes/setup-svu@v0.2.0
+
+      - name: Calculate next version
+        id: version
+        run: |
+          CURRENT=$(svu current || echo "v0.0.0")
+          NEXT=$(svu next)
+
+          echo "Current: $CURRENT"
+          echo "Next: $NEXT"
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+
+          if [ "$CURRENT" = "$NEXT" ]; then
+            echo "No version bump needed"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=$NEXT" >> "$GITHUB_OUTPUT"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  tag:
+    name: Create Tag and Release
+    runs-on: ubuntu-latest
+    needs: calculateVersion
+    if: needs.calculateVersion.outputs.skip != 'true'
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Create Tag and Release
+        id: release
+        uses: ./
+        with:
+          version: ${{ needs.calculateVersion.outputs.version }}
+
+  summary:
+    name: Write summary
+    runs-on: ubuntu-latest
+    needs: [calculateVersion, tag]
+    steps:
+      - name: Write summary
+        env:
+          CURRENT: ${{ needs.calculateVersion.outputs.current }}
+          VERSION: ${{ needs.calculateVersion.outputs.version }}
+        run: |
+          {
+            echo "## Release Summary"
+            echo ""
+            echo "**Previous version:** $CURRENT"
+            echo "**New version:** $VERSION"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  no-release:
+    name: No Release
+    runs-on: ubuntu-latest
+    needs: calculateVersion
+    if: needs.calculateVersion.outputs.skip == 'true'
+    steps:
+      - name: Write summary
+        run: |
+          {
+            echo "## No Release"
+            echo ""
+            echo "No version bump triggered. Use conventional commits:"
+            echo "- \`fix:\` → patch"
+            echo "- \`feat:\` → minor"
+            echo "- \`feat!:\` or \`BREAKING CHANGE:\` → major"
+          } >> "$GITHUB_STEP_SUMMARY"

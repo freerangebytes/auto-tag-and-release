@@ -1,0 +1,93 @@
+---
+name: Test
+on:
+  pull_request:
+
+jobs:
+  # Dry-run mode - new version (would release)
+  test-dry-run-new-version:
+    name: Action Test - Dry Run (new version)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Test action (dry-run with non-existent version)
+        id: test-release
+        uses: ./
+        with:
+          version: "v99.99.99-test"
+          dry-run: "true"
+
+      - name: Verify outputs
+        run: |
+          echo "Released output: ${{ steps.test-release.outputs.released }}"
+          echo "Version output: ${{ steps.test-release.outputs.version }}"
+
+          # Should report released=true since the version doesn't exist
+          if [[ "${{ steps.test-release.outputs.released }}" != "true" ]]; then
+            echo "::error::Expected released=true for non-existent version in dry-run"
+            exit 1
+          fi
+
+          # Verify version output matches input
+          if [[ "${{ steps.test-release.outputs.version }}" != "v99.99.99-test" ]]; then
+            echo "::error::Version output mismatch"
+            exit 1
+          fi
+
+          echo "✓ Dry-run test passed - action would release v99.99.99-test"
+
+  # Dry-run mode - existing version (would not release)
+  test-dry-run-existing-version:
+    name: Action Test - Dry Run (existing version)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Get an existing tag
+        id: get-tag
+        run: |
+          # Get the most recent tag from the repo
+          EXISTING_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [[ -z "$EXISTING_TAG" ]]; then
+            echo "No existing tags found, skipping this test"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Found existing tag: $EXISTING_TAG"
+            echo "tag=$EXISTING_TAG" >> "$GITHUB_OUTPUT"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Test action (dry-run with existing version)
+        id: test-release
+        if: steps.get-tag.outputs.skip != 'true'
+        uses: ./
+        with:
+          version: ${{ steps.get-tag.outputs.tag }}
+          dry-run: "true"
+
+      - name: Verify outputs
+        if: steps.get-tag.outputs.skip != 'true'
+        run: |
+          echo "Released output: ${{ steps.test-release.outputs.released }}"
+          echo "Version output: ${{ steps.test-release.outputs.version }}"
+
+          # Should report released=false since the version already exists
+          if [[ "${{ steps.test-release.outputs.released }}" != "false" ]]; then
+            echo "::error::Expected released=false for existing version in dry-run"
+            exit 1
+          fi
+
+          echo "✓ Dry-run test passed - action correctly detected existing release"

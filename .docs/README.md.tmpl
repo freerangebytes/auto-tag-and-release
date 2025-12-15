@@ -1,8 +1,9 @@
+{{- $action := datasource "action" -}}
 <!-- This file is generated. Do not edit directly. See .docs/README.md for details. -->
 
-# Auto Tag and Release
+# {{ $action.name }}
 
-Automatically create tags and releases.
+{{ $action.description }}
 
 ## Why Use This Action?
 
@@ -12,33 +13,7 @@ Automatically create tags and releases.
 - **Simple interface** – Just provide a version string and the action handles the rest
 - **Lightweight** – A composite action with no external dependencies, runs entirely via GitHub's API
 
-## Usage
-
-```yaml
-- uses: freerangebytes/auto-tag-and-release@v0.2.0
-  with:
-    # If true, skip creating tags and releases (useful for testing)
-    dry-run: "false"
-    # If true, output a summary to the job summary
-    summary: "true"
-    # The version for the release
-    version: "v1.0.0"
-```
-
-## Inputs
-
-| Name | Description | Required | Default |
-| ---- | ----------- | -------- | ------- |
-| `dry-run` | If true, skip creating tags and releases (useful for testing) | `false` | `false` |
-| `summary` | If true, output a summary to the job summary | `false` | `true` |
-| `version` | The version for the release | `true` | - |
-
-## Outputs
-
-| Name | Description |
-| ---- | ----------- |
-| `released` | Whether a new release was created |
-| `version` | The version for the release |
+{{ template "action" $action }}
 
 ## Contributing
 

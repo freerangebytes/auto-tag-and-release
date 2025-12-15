@@ -1,0 +1,28 @@
+{{- define "action" -}}
+## Usage
+
+```yaml
+- uses: freerangebytes/auto-tag-and-release@v0.2.0
+  with:
+{{- range $name, $input := .inputs }}
+    # {{ $input.description }}
+    {{ $name }}: {{ if (index $input "default") }}{{ index $input "default" | quote }}{{ else }}"v1.0.0"{{ end }}
+{{- end }}
+```
+
+## Inputs
+
+| Name | Description | Required | Default |
+| ---- | ----------- | -------- | ------- |
+{{- range $name, $input := .inputs }}
+| `{{ $name }}` | {{ $input.description }} | {{ if $input.required }}`true`{{ else }}`false`{{ end }} | {{ if (index $input "default") }}`{{ index $input "default" }}`{{ else }}-{{ end }} |
+{{- end }}
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+{{- range $name, $output := .outputs }}
+| `{{ $name }}` | {{ $output.description }} |
+{{- end }}
+{{- end -}}
