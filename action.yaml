@@ -1,0 +1,170 @@
+---
+name: "Auto Tag and Release"
+description: "Automatically create tags and releases."
+branding:
+  icon: "package"
+  color: "blue"
+inputs:
+  version:
+    description: "The version for the release"
+    required: true
+  dry-run:
+    description: "If true, skip creating tags and releases (useful for testing)"
+    required: false
+    default: "false"
+  summary:
+    description: "If true, output a summary to the job summary"
+    required: false
+    default: "true"
+outputs:
+  version:
+    description: "The version for the release"
+    value: ${{ inputs.version }}
+  released:
+    description: "Whether a new release was created"
+    value: ${{ steps.set-output.outputs.released }}
+runs:
+  using: "composite"
+  steps:
+    - name: Check if tag exists
+      id: check-tag
+      uses: actions/github-script@v8
+      env:
+        VERSION: ${{ inputs.version }}
+      with:
+        script: |
+          const version = process.env['VERSION'];
+          try {
+            await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `tags/${version}`
+            });
+            core.info(`Tag ${version} already exists`);
+            core.setOutput('exists', 'true');
+          } catch (error) {
+            if (error.status === 404) {
+              core.info(`Tag ${version} does not exist`);
+              core.setOutput('exists', 'false');
+            } else {
+              throw error;
+            }
+          }
+
+    - name: Check if release exists
+      id: check-release
+      uses: actions/github-script@v8
+      env:
+        VERSION: ${{ inputs.version }}
+      with:
+        script: |
+          const version = process.env['VERSION'];
+          try {
+            await github.rest.repos.getReleaseByTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag: version
+            });
+            core.info(`Release ${version} already exists`);
+            core.setOutput('exists', 'true');
+          } catch (error) {
+            if (error.status === 404) {
+              core.info(`Release ${version} does not exist`);
+              core.setOutput('exists', 'false');
+            } else {
+              throw error;
+            }
+          }
+
+    - name: Create tag
+      id: create-tag
+      if: steps.check-tag.outputs.exists == 'false' && inputs.dry-run != 'true'
+      uses: actions/github-script@v8
+      env:
+        VERSION: ${{ inputs.version }}
+      with:
+        script: |
+          const version = process.env['VERSION'];
+          core.info(`Creating tag: ${version}`);
+          await github.rest.git.createRef({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            ref: `refs/tags/${version}`,
+            sha: context.sha
+          });
+
+    - name: Create release
+      id: create-release
+      if: steps.check-release.outputs.exists == 'false' && inputs.dry-run != 'true'
+      uses: actions/github-script@v8
+      env:
+        VERSION: ${{ inputs.version }}
+      with:
+        script: |
+          const version = process.env['VERSION'];
+          core.info(`Creating release: ${version}`);
+          await github.rest.repos.createRelease({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            tag_name: version,
+            name: version,
+            generate_release_notes: true
+          });
+
+    - name: Set output
+      id: set-output
+      shell: bash
+      run: |
+        if [[ "${{ inputs.dry-run }}" == "true" ]]; then
+          # In dry-run mode, report what would have happened
+          if [[ "${{ steps.check-release.outputs.exists }}" == "false" ]]; then
+            echo "released=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "released=false" >> "$GITHUB_OUTPUT"
+          fi
+        elif [[ "${{ steps.check-release.outputs.exists }}" == "false" ]]; then
+          echo "released=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "released=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Summary
+      if: inputs.summary == 'true'
+      uses: actions/github-script@v8
+      env:
+        VERSION: ${{ inputs.version }}
+        DRY_RUN: ${{ inputs.dry-run }}
+        TAG_EXISTS: ${{ steps.check-tag.outputs.exists }}
+        RELEASE_EXISTS: ${{ steps.check-release.outputs.exists }}
+        RELEASED: ${{ steps.set-output.outputs.released }}
+      with:
+        script: |
+          const version = process.env.VERSION;
+          const dryRun = process.env.DRY_RUN === 'true';
+          const tagExisted = process.env.TAG_EXISTS === 'true';
+          const releaseExisted = process.env.RELEASE_EXISTS === 'true';
+          const released = process.env.RELEASED === 'true';
+
+          const icon = released ? '🚀' : '⏭️';
+          const title = dryRun ? `${icon} Auto Tag and Release (Dry Run)` : `${icon} Auto Tag and Release`;
+
+          let tagStatus, releaseStatus;
+          if (dryRun) {
+            tagStatus = tagExisted ? '⏭️ Already exists' : '🆕 Would create';
+            releaseStatus = releaseExisted ? '⏭️ Already exists' : '🆕 Would create';
+          } else {
+            tagStatus = tagExisted ? '⏭️ Already exists' : '✅ Created';
+            releaseStatus = releaseExisted ? '⏭️ Already exists' : '✅ Created';
+          }
+
+          await core.summary
+            .addHeading(title, 2)
+            .addTable([
+              [{data: 'Property', header: true}, {data: 'Value', header: true}],
+              ['Version', `\`${version}\``],
+              ['Dry Run', dryRun ? 'Yes' : 'No'],
+              ['Tag', tagStatus],
+              ['Release', releaseStatus],
+              ['Released', released ? 'Yes' : 'No']
+            ])
+            .write();

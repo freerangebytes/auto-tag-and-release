@@ -1,0 +1,33 @@
+---
+name: Documentation
+on:
+  pull_request:
+jobs:
+  verify-readme:
+    name: Verify README is up to date
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 1
+      - name: Install gomplate
+        run: |
+          curl -fsSL -o /usr/local/bin/gomplate \
+            https://github.com/hairyhenderson/gomplate/releases/latest/download/gomplate_linux-amd64
+          chmod +x /usr/local/bin/gomplate
+      - name: Generate README.md
+        run: >-
+          gomplate
+          -d action=./action.yaml
+          -t .docs/action.md.tmpl
+          -f .docs/README.md.tmpl
+          -o README.md
+      - name: Check for differences
+        run: |
+          if ! git diff --exit-code README.md; then
+            echo "::error::README.md is out of date. Run 'mise run docs' and commit the changes."
+            exit 1
+          fi
+          echo "README.md is up to date."
