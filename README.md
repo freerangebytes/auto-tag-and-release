@@ -2,7 +2,7 @@
 
 # Auto Tag and Release
 
-Automatically create tags and releases.
+Automatically create Git tags and GitHub releases for new versions
 
 ## Features
 
