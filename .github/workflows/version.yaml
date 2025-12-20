@@ -60,37 +60,4 @@ jobs:
         uses: ./
         with:
           version: ${{ needs.calculateVersion.outputs.version }}
-
-  summary:
-    name: Write summary
-    runs-on: ubuntu-latest
-    needs: [calculateVersion, tag]
-    steps:
-      - name: Write summary
-        env:
-          CURRENT: ${{ needs.calculateVersion.outputs.current }}
-          VERSION: ${{ needs.calculateVersion.outputs.version }}
-        run: |
-          {
-            echo "## Release Summary"
-            echo ""
-            echo "**Previous version:** $CURRENT"
-            echo "**New version:** $VERSION"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-  no-release:
-    name: No Release
-    runs-on: ubuntu-latest
-    needs: calculateVersion
-    if: needs.calculateVersion.outputs.skip == 'true'
-    steps:
-      - name: Write summary
-        run: |
-          {
-            echo "## No Release"
-            echo ""
-            echo "No version bump triggered. Use conventional commits:"
-            echo "- \`fix:\` → patch"
-            echo "- \`feat:\` → minor"
-            echo "- \`feat!:\` or \`BREAKING CHANGE:\` → major"
-          } >> "$GITHUB_STEP_SUMMARY"
+          previous-version: ${{ needs.calculateVersion.outputs.current }}

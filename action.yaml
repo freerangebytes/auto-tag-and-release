@@ -1,6 +1,6 @@
 ---
 name: "Auto Tag and Release"
-description: "Automatically create tags and releases."
+description: "Automatically create Git tags and GitHub releases for new versions"
 branding:
   icon: "package"
   color: "blue"
@@ -8,6 +8,10 @@ inputs:
   version:
     description: "The version for the release"
     required: true
+  previous-version:
+    description: "The previous version for the release"
+    required: false
+    default: ""
   dry-run:
     description: "If true, skip creating tags and releases (useful for testing)"
     required: false
@@ -20,12 +24,33 @@ outputs:
   version:
     description: "The version for the release"
     value: ${{ inputs.version }}
+  previous-version:
+    description: "The previous version for the release"
+    value: ${{ inputs.previous-version }}
   released:
     description: "Whether a new release was created"
     value: ${{ steps.set-output.outputs.released }}
 runs:
   using: "composite"
   steps:
+    - name: Check if version changed
+      id: version-changed
+      shell: bash
+      env:
+        PREVIOUS_VERSION: ${{ inputs.previous-version }}
+        CURRENT_VERSION: ${{ inputs.version }}
+      run: |
+        if [[ -z "$PREVIOUS_VERSION" ]]; then
+          # No previous version provided, assume it's new
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "Previous version not provided, assuming new version"
+        elif [[ "$PREVIOUS_VERSION" == "$CURRENT_VERSION" ]]; then
+          echo "changed=false" >> "$GITHUB_OUTPUT"
+          echo "Version unchanged: $CURRENT_VERSION"
+        else
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "Version changed: $PREVIOUS_VERSION -> $CURRENT_VERSION"
+        fi
     - name: Check if tag exists
       id: check-tag
       uses: actions/github-script@v8
@@ -78,7 +103,10 @@ runs:
 
     - name: Create tag
       id: create-tag
-      if: steps.check-tag.outputs.exists == 'false' && inputs.dry-run != 'true'
+      if: >-
+        steps.version-changed.outputs.changed == 'true' &&
+        steps.check-tag.outputs.exists == 'false' &&
+        inputs.dry-run != 'true'
       uses: actions/github-script@v8
       env:
         VERSION: ${{ inputs.version }}
@@ -95,7 +123,10 @@ runs:
 
     - name: Create release
       id: create-release
-      if: steps.check-release.outputs.exists == 'false' && inputs.dry-run != 'true'
+      if: >-
+        steps.version-changed.outputs.changed == 'true' &&
+        steps.check-release.outputs.exists == 'false' &&
+        inputs.dry-run != 'true'
       uses: actions/github-script@v8
       env:
         VERSION: ${{ inputs.version }}
@@ -114,15 +145,12 @@ runs:
     - name: Set output
       id: set-output
       shell: bash
+      env:
+        VERSION_CHANGED: ${{ steps.version-changed.outputs.changed }}
+        RELEASE_EXISTS: ${{ steps.check-release.outputs.exists }}
       run: |
-        if [[ "${{ inputs.dry-run }}" == "true" ]]; then
-          # In dry-run mode, report what would have happened
-          if [[ "${{ steps.check-release.outputs.exists }}" == "false" ]]; then
-            echo "released=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "released=false" >> "$GITHUB_OUTPUT"
-          fi
-        elif [[ "${{ steps.check-release.outputs.exists }}" == "false" ]]; then
+        # Released is true only when version changed AND release didn't exist
+        if [[ "$VERSION_CHANGED" == "true" && "$RELEASE_EXISTS" == "false" ]]; then
           echo "released=true" >> "$GITHUB_OUTPUT"
         else
           echo "released=false" >> "$GITHUB_OUTPUT"
@@ -133,6 +161,8 @@ runs:
       uses: actions/github-script@v8
       env:
         VERSION: ${{ inputs.version }}
+        PREVIOUS_VERSION: ${{ inputs.previous-version }}
+        VERSION_CHANGED: ${{ steps.version-changed.outputs.changed }}
         DRY_RUN: ${{ inputs.dry-run }}
         TAG_EXISTS: ${{ steps.check-tag.outputs.exists }}
         RELEASE_EXISTS: ${{ steps.check-release.outputs.exists }}
@@ -140,6 +170,8 @@ runs:
       with:
         script: |
           const version = process.env.VERSION;
+          const previousVersion = process.env.PREVIOUS_VERSION || 'N/A';
+          const versionChanged = process.env.VERSION_CHANGED === 'true';
           const dryRun = process.env.DRY_RUN === 'true';
           const tagExisted = process.env.TAG_EXISTS === 'true';
           const releaseExisted = process.env.RELEASE_EXISTS === 'true';
@@ -149,7 +181,10 @@ runs:
           const title = dryRun ? `${icon} Auto Tag and Release (Dry Run)` : `${icon} Auto Tag and Release`;
 
           let tagStatus, releaseStatus;
-          if (dryRun) {
+          if (!versionChanged) {
+            tagStatus = '⏭️ Skipped (version unchanged)';
+            releaseStatus = '⏭️ Skipped (version unchanged)';
+          } else if (dryRun) {
             tagStatus = tagExisted ? '⏭️ Already exists' : '🆕 Would create';
             releaseStatus = releaseExisted ? '⏭️ Already exists' : '🆕 Would create';
           } else {
@@ -161,7 +196,9 @@ runs:
             .addHeading(title, 2)
             .addTable([
               [{data: 'Property', header: true}, {data: 'Value', header: true}],
-              ['Version', `\`${version}\``],
+              ['Version', `<code>${version}</code>`],
+              ['Previous Version', `<code>${previousVersion}</code>`],
+              ['Version Changed', versionChanged ? 'Yes' : 'No'],
               ['Dry Run', dryRun ? 'Yes' : 'No'],
               ['Tag', tagStatus],
               ['Release', releaseStatus],

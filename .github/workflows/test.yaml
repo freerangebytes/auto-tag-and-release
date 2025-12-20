@@ -46,9 +46,9 @@ jobs:
 
           echo "✓ Dry-run test passed - action would release v99.99.99-test"
 
-  # Dry-run mode - existing version (would not release)
-  test-dry-run-existing-version:
-    name: Action Test - Dry Run (existing version)
+  # Dry-run mode - existing tags and releases (would not release)
+  test-dry-run-existing-tags:
+    name: Action Test - Dry Run (existing tags)
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -94,3 +94,50 @@ jobs:
           fi
 
           echo "✓ Dry-run test passed - action correctly detected existing release"
+
+  # Dry-run mode - previous version matches current version (should not release)
+  test-dry-run-unchanged-version:
+    name: Action Test - Dry Run (unchanged version)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Test action (dry-run with previous-version == version)
+        id: test-release
+        uses: ./
+        with:
+          version: "v1.0.0"
+          previous-version: "v1.0.0"
+          dry-run: "true"
+
+      - name: Verify outputs
+        run: |
+          echo "Released output: ${{ steps.test-release.outputs.released }}"
+          echo "Version output: ${{ steps.test-release.outputs.version }}"
+          echo "Previous version output: ${{ steps.test-release.outputs.previous-version }}"
+
+          # Should report released=false since the version matches previous-version
+          if [[ "${{ steps.test-release.outputs.released }}" != "false" ]]; then
+            echo "::error::Expected released=false when previous-version matches version"
+            exit 1
+          fi
+
+          # Verify version output matches input
+          if [[ "${{ steps.test-release.outputs.version }}" != "v1.0.0" ]]; then
+            echo "::error::Version output mismatch"
+            exit 1
+          fi
+
+          # Verify previous-version output matches input
+          if [[ "${{ steps.test-release.outputs.previous-version }}" != "v1.0.0" ]]; then
+            echo "::error::Previous version output mismatch"
+            exit 1
+          fi
+
+          echo "✓ Dry-run test passed - action correctly skipped unchanged version"
