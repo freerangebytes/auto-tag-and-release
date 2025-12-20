@@ -190,8 +190,8 @@ runs:
             .addHeading(title, 2)
             .addTable([
               [{data: 'Property', header: true}, {data: 'Value', header: true}],
-              ['Version', `\`${version}\``],
-              ['Previous Version', `\`${previousVersion}\``],
+              ['Version', `<code>${version}</code>`],
+              ['Previous Version', `<code>${previousVersion}</code>`],
               ['Version Changed', versionChanged ? 'Yes' : 'No'],
               ['Dry Run', dryRun ? 'Yes' : 'No'],
               ['Tag', tagStatus],
