@@ -33,6 +33,16 @@ outputs:
 runs:
   using: "composite"
   steps:
+    - name: Validate version
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+      run: |
+        if [[ -z "$VERSION" ]]; then
+          echo "::error::Version input is required and cannot be empty"
+          exit 1
+        fi
+
     - name: Check if version changed
       id: version-changed
       shell: bash
