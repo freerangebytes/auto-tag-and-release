@@ -2,6 +2,10 @@
 name: Linting
 on:
   pull_request:
+
+permissions:
+  contents: read
+
 jobs:
   actionlint:
     name: Actionlint
