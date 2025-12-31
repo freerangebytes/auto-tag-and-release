@@ -160,7 +160,7 @@ jobs:
         with:
           version: "v1.0.0"
           previous-version: "v1.0.0"
-          ref: ${{ github.ref }}
+          ref: ${{ github.head_ref }}
           dry-run: "true"
 
       - name: Verify outputs
@@ -183,7 +183,7 @@ jobs:
           fi
 
           # Verify SHA output matches input
-          if [[ "${{ steps.test-release.outputs.sha }}" != "${{ github.sha }}" ]]; then
+          if [[ "${{ steps.test-release.outputs.sha }}" != "${{ github.event.pull_request.head.sha }}" ]]; then
             echo "::error::SHA output mismatch"
             exit 1
           fi
