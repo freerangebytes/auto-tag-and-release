@@ -17,7 +17,7 @@ inputs:
     required: false
     default: "false"
   ref:
-    description: "The ref to tag and release"
+    description: "The ref to tag and release. A ref with no prefix will be treated as a branch ref."
     required: false
     default: ${{ github.sha }}
   summary:
