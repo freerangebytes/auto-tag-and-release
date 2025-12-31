@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: ${{ github.head_ref }}
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: Test action (dry-run with non-existent version)
         id: test-release
@@ -57,7 +57,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: ${{ github.head_ref }}
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: Get an existing tag
         id: get-tag
@@ -106,7 +106,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: ${{ github.head_ref }}
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: Test action (dry-run with previous-version == version)
         id: test-release
@@ -137,6 +137,54 @@ jobs:
           # Verify previous-version output matches input
           if [[ "${{ steps.test-release.outputs.previous-version }}" != "v1.0.0" ]]; then
             echo "::error::Previous version output mismatch"
+            exit 1
+          fi
+
+          echo "✓ Dry-run test passed - action correctly skipped unchanged version"
+  # Dry-run mode - previous version matches current version (should not release)
+  test-dry-run-specific-ref:
+    name: Action Test - Dry Run (specific ref)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 1
+
+      - name: Test action (dry-run with previous-version == version)
+        id: test-release
+        uses: ./
+        with:
+          version: "v1.0.0"
+          previous-version: "v1.0.0"
+          ref: ${{ github.head_ref }}
+          dry-run: "true"
+
+      - name: Verify outputs
+        run: |
+          echo "Released output: ${{ steps.test-release.outputs.released }}"
+          echo "Version output: ${{ steps.test-release.outputs.version }}"
+          echo "Previous version output: ${{ steps.test-release.outputs.previous-version }}"
+          echo "SHA output: ${{ steps.test-release.outputs.sha }}"
+
+          # Verify version output matches input
+          if [[ "${{ steps.test-release.outputs.version }}" != "v1.0.0" ]]; then
+            echo "::error::Version output mismatch"
+            exit 1
+          fi
+
+          # Verify previous-version output matches input
+          if [[ "${{ steps.test-release.outputs.previous-version }}" != "v1.0.0" ]]; then
+            echo "::error::Previous version output mismatch"
+            exit 1
+          fi
+
+          # Verify SHA output matches input
+          if [[ "${{ steps.test-release.outputs.sha }}" != "${{ github.event.pull_request.head.sha }}" ]]; then
+            echo "::error::SHA output mismatch"
             exit 1
           fi
 

@@ -38,6 +38,8 @@ Automatically create Git tags and GitHub releases for new versions
     dry-run: "false"
     # The previous version for the release
     previous-version: "v1.0.0"
+    # The ref to tag and release. A ref with no prefix will be treated as a branch ref.
+    ref: "${{ github.sha }}"
     # If true, output a summary to the job summary
     summary: "true"
     # The version for the release
@@ -50,6 +52,7 @@ Automatically create Git tags and GitHub releases for new versions
 | ---- | ----------- | -------- | ------- |
 | `dry-run` | If true, skip creating tags and releases (useful for testing) | `false` | `false` |
 | `previous-version` | The previous version for the release | `false` | - |
+| `ref` | The ref to tag and release. A ref with no prefix will be treated as a branch ref. | `false` | `${{ github.sha }}` |
 | `summary` | If true, output a summary to the job summary | `false` | `true` |
 | `version` | The version for the release | `true` | - |
 
@@ -59,6 +62,7 @@ Automatically create Git tags and GitHub releases for new versions
 | ---- | ----------- |
 | `previous-version` | The previous version for the release |
 | `released` | Whether a new release was created |
+| `sha` | The SHA of the commit the tag points to |
 | `version` | The version for the release |
 
 ## Contributing

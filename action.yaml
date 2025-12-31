@@ -16,6 +16,10 @@ inputs:
     description: "If true, skip creating tags and releases (useful for testing)"
     required: false
     default: "false"
+  ref:
+    description: "The ref to tag and release. A ref with no prefix will be treated as a branch ref."
+    required: false
+    default: ${{ github.sha }}
   summary:
     description: "If true, output a summary to the job summary"
     required: false
@@ -27,6 +31,9 @@ outputs:
   previous-version:
     description: "The previous version for the release"
     value: ${{ inputs.previous-version }}
+  sha:
+    description: "The SHA of the commit the tag points to"
+    value: ${{ steps.standardize-ref.outputs.sha }}
   released:
     description: "Whether a new release was created"
     value: ${{ steps.set-output.outputs.released }}
@@ -111,6 +118,47 @@ runs:
             }
           }
 
+    - name: Standardize ref
+      id: standardize-ref
+      env:
+        REF: ${{ inputs.ref }}
+      uses: actions/github-script@v8
+      with:
+        script: |
+          const shaRegex = /^[0-9a-f]{4,40}$/i;
+          const ref = process.env['REF'];
+          let normalizedRef = ref.replace(/^refs\//, '');
+
+          if (!normalizedRef.startsWith('heads/') && !normalizedRef.startsWith('tags/')) {
+            normalizedRef = `heads/${normalizedRef}`
+          }
+
+          try {
+            const { data } = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: normalizedRef
+            });
+
+            core.setOutput('sha', data.object.sha);
+            return
+          } catch (error) {
+            if (error.status === 404) {
+              core.info(`Ref not found: ${normalizedRef}`);
+            } else {
+              core.error(`Error getting ref: ${normalizedRef}`);
+              throw error;
+            }
+          }
+
+          if (shaRegex.test(ref)) {
+            core.setOutput('sha', ref.toLowerCase());
+            return
+          }
+
+          core.error(`Invalid ref: ${ref}`);
+          process.exit(1);
+
     - name: Create tag
       id: create-tag
       if: >-
@@ -120,15 +168,17 @@ runs:
       uses: actions/github-script@v8
       env:
         VERSION: ${{ inputs.version }}
+        SHA: ${{ steps.standardize-ref.outputs.sha }}
       with:
         script: |
           const version = process.env['VERSION'];
+          const sha = process.env['SHA'];
           core.info(`Creating tag: ${version}`);
           await github.rest.git.createRef({
             owner: context.repo.owner,
             repo: context.repo.repo,
             ref: `refs/tags/${version}`,
-            sha: context.sha
+            sha: sha
           });
 
     - name: Create release
@@ -172,6 +222,7 @@ runs:
       env:
         VERSION: ${{ inputs.version }}
         PREVIOUS_VERSION: ${{ inputs.previous-version }}
+        SHA: ${{ steps.standardize-ref.outputs.sha }}
         VERSION_CHANGED: ${{ steps.version-changed.outputs.changed }}
         DRY_RUN: ${{ inputs.dry-run }}
         TAG_EXISTS: ${{ steps.check-tag.outputs.exists }}
@@ -181,6 +232,7 @@ runs:
         script: |
           const version = process.env.VERSION;
           const previousVersion = process.env.PREVIOUS_VERSION || 'N/A';
+          const sha = process.env.SHA || 'N/A';
           const versionChanged = process.env.VERSION_CHANGED === 'true';
           const dryRun = process.env.DRY_RUN === 'true';
           const tagExisted = process.env.TAG_EXISTS === 'true';
@@ -208,6 +260,7 @@ runs:
               [{data: 'Property', header: true}, {data: 'Value', header: true}],
               ['Version', `<code>${version}</code>`],
               ['Previous Version', `<code>${previousVersion}</code>`],
+              ['SHA', `<code>${sha}</code>`],
               ['Version Changed', versionChanged ? 'Yes' : 'No'],
               ['Dry Run', dryRun ? 'Yes' : 'No'],
               ['Tag', tagStatus],
