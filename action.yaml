@@ -129,7 +129,7 @@ runs:
           const ref = process.env['REF'];
           let normalizedRef = ref.replace(/^refs\//, '');
 
-          if (!normalizedRef.includes('/')) {
+          if (!normalizedRef.startsWith('heads/') && !normalizedRef.startsWith('tags/')) {
             normalizedRef = `heads/${normalizedRef}`
           }
 
