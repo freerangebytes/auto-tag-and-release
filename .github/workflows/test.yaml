@@ -142,8 +142,8 @@ jobs:
 
           echo "✓ Dry-run test passed - action correctly skipped unchanged version"
   # Dry-run mode - previous version matches current version (should not release)
-  test-dry-run-specific-sha:
-    name: Action Test - Dry Run (specific SHA)
+  test-dry-run-specific-ref:
+    name: Action Test - Dry Run (specific ref)
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -160,7 +160,7 @@ jobs:
         with:
           version: "v1.0.0"
           previous-version: "v1.0.0"
-          sha: "refs/heads/main"
+          ref: ${{ github.ref }}
           dry-run: "true"
 
       - name: Verify outputs
@@ -183,7 +183,7 @@ jobs:
           fi
 
           # Verify SHA output matches input
-          if [[ "${{ steps.test-release.outputs.sha }}" != "refs/heads/main" ]]; then
+          if [[ "${{ steps.test-release.outputs.sha }}" != "${{ github.sha }}" ]]; then
             echo "::error::SHA output mismatch"
             exit 1
           fi
