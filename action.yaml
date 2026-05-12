@@ -70,7 +70,7 @@ runs:
         fi
     - name: Check if tag exists
       id: check-tag
-      uses: actions/github-script@v8
+      uses: actions/github-script@v9
       env:
         VERSION: ${{ inputs.version }}
       with:
@@ -95,7 +95,7 @@ runs:
 
     - name: Check if release exists
       id: check-release
-      uses: actions/github-script@v8
+      uses: actions/github-script@v9
       env:
         VERSION: ${{ inputs.version }}
       with:
@@ -122,7 +122,7 @@ runs:
       id: standardize-ref
       env:
         REF: ${{ inputs.ref }}
-      uses: actions/github-script@v8
+      uses: actions/github-script@v9
       with:
         script: |
           const shaRegex = /^[0-9a-f]{4,40}$/i;
@@ -165,7 +165,7 @@ runs:
         steps.version-changed.outputs.changed == 'true' &&
         steps.check-tag.outputs.exists == 'false' &&
         inputs.dry-run != 'true'
-      uses: actions/github-script@v8
+      uses: actions/github-script@v9
       env:
         VERSION: ${{ inputs.version }}
         SHA: ${{ steps.standardize-ref.outputs.sha }}
@@ -187,7 +187,7 @@ runs:
         steps.version-changed.outputs.changed == 'true' &&
         steps.check-release.outputs.exists == 'false' &&
         inputs.dry-run != 'true'
-      uses: actions/github-script@v8
+      uses: actions/github-script@v9
       env:
         VERSION: ${{ inputs.version }}
       with:
@@ -218,7 +218,7 @@ runs:
 
     - name: Summary
       if: inputs.summary == 'true'
-      uses: actions/github-script@v8
+      uses: actions/github-script@v9
       env:
         VERSION: ${{ inputs.version }}
         PREVIOUS_VERSION: ${{ inputs.previous-version }}
