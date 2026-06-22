@@ -19,7 +19,7 @@ jobs:
       skip: ${{ steps.version.outputs.skip }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.3
         with:
           fetch-depth: 0
 
@@ -53,7 +53,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.3
 
       - name: Create Tag and Release
         id: release
