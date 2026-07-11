@@ -2,6 +2,9 @@
 extends: default
 
 rules:
+  comments:
+    # Dependabot writes SHA-pin version comments as "@<sha> # v1.2.3"
+    min-spaces-from-content: 1
   line-length:
     max: 120
     level: warning
