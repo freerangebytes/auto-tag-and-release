@@ -19,12 +19,12 @@ jobs:
       skip: ${{ steps.version.outputs.skip }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
 
       - name: Install svu
-        uses: freerangebytes/setup-svu@v0.2.0
+        uses: freerangebytes/setup-svu@5c3642415bd288797905641f2d06ad44504421bd # v0.2.0
 
       - name: Calculate next version
         id: version
@@ -53,7 +53,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Create Tag and Release
         id: release
