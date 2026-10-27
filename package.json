@@ -3,7 +3,7 @@
     "private": true,
     "type": "module",
     "devDependencies": {
-      "@commitlint/cli": "^21.2.3",
+      "@commitlint/cli": "^21.2.4",
       "@commitlint/config-conventional": "^21.2.4",
       "@commitlint/format": "^21.2.3",
       "conventional-changelog-atom": "^5.1.0"
